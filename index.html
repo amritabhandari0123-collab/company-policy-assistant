@@ -131,9 +131,16 @@
 
       const scored = policies.map(policy => {
         const text = Object.values(policy).join(" ").toLowerCase();
-        const score = words.filter(word =>
-          word.length > 2 && text.includes(word)
-        ).length;
+        const stopWords = new Set(["what", "is", "the", "company", "policy", "on", "a", "an", "are", "does", "do", "how", "can", "i", "about", "for", "and", "to", "of", "in", "my", "our"]);
+const keywords = words.filter(word => word.length > 2 && !stopWords.has(word));
+const title = policy.title.toLowerCase();
+const category = policy.category.toLowerCase();
+const score = keywords.reduce((total, word) => {
+  return total +
+    (title.includes(word) ? 5 : 0) +
+    (category.includes(word) ? 2 : 0) +
+    (text.includes(word) ? 1 : 0);
+}, 0);
 
         return { policy, score };
       }).sort((a, b) => b.score - a.score);
