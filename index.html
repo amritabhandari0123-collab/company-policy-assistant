@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Company Policy Assistant</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f6fb;
+      margin: 0;
+      padding: 30px;
+      color: #18283d;
+    }
+    main {
+      max-width: 850px;
+      margin: auto;
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+    }
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      font-size: 16px;
+    }
+    button {
+      margin-top: 12px;
+      padding: 12px 20px;
+      background: #2354a4;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #results {
+      margin-top: 25px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Company Policy Assistant</h1>
+    <p>Ask a question about company policies.</p>
+
+    <textarea id="question" rows="3"
+      placeholder="Type your policy question here"></textarea>
+
+    <button onclick="searchPolicies()">Search Policies</button>
+
+    <div id="results">Loading company policies...</div>
+  </main>
+
+  <script>
+    let policies = [];
+
+    function parseCSV(text) {
+      const rows = [];
+      let row = [], value = "", quoted = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+
+        if (char === '"') {
+          if (quoted && text[i + 1] === '"') {
+            value += '"';
+            i++;
+          } else {
+            quoted = !quoted;
+          }
+        } else if (char === ',' && !quoted) {
+          row.push(value);
+          value = "";
+        } else if ((char === '\n' || char === '\r') && !quoted) {
+          if (char === '\r' && text[i + 1] === '\n') i++;
+          row.push(value);
+          if (row.some(cell => cell.trim())) rows.push(row);
+          row = [];
+          value = "";
+        } else {
+          value += char;
+        }
+      }
+
+      row.push(value);
+      if (row.some(cell => cell.trim())) rows.push(row);
+
+      const headers = rows.shift().map(h => h.trim());
+
+      return rows.map(cells =>
+        Object.fromEntries(headers.map((h, i) => [h, cells[i] || ""]))
+      );
+    }
+
+    async function loadPolicies() {
+      try {
+        const response = await fetch("company_policies.csv");
+        if (!response.ok) throw new Error("CSV file not found");
+
+        policies = parseCSV(await response.text());
+
+        document.getElementById("results").textContent =
+          "Loaded " + policies.length +
+          " policies. Enter a question to begin.";
+      } catch (error) {
+        document.getElementById("results").textContent =
+          "Could not load company_policies.csv: " + error.message;
+      }
+    }
+
+    function searchPolicies() {
+      const question = document.getElementById("question").value.trim();
+      const output = document.getElementById("results");
+
+      if (!question) {
+        output.textContent = "Please enter a question.";
+        return;
+      }
+
+      if (!policies.length) {
+        output.textContent = "No policies have been loaded.";
+        return;
+      }
+
+      const start = performance.now();
+      const words = question.toLowerCase()
+        .match(/[a-z0-9]+/g) || [];
+
+      const scored = policies.map(policy => {
+        const text = Object.values(policy).join(" ").toLowerCase();
+        const score = words.filter(word =>
+          word.length > 2 && text.includes(word)
+        ).length;
+
+        return { policy, score };
+      }).sort((a, b) => b.score - a.score);
+
+      const best = scored[0];
+      const elapsed = (performance.now() - start).toFixed(2);
+
+      if (!best || best.score === 0) {
+        output.textContent =
+          "No matching policy found.\n" +
+          "Response time: " + elapsed + " ms\n" +
+          "LLM tokens used: 0";
+        return;
+      }
+
+      output.textContent =
+        "Method: Rules-based keyword search\n\n" +
+        "Relevant policy:\n" +
+        JSON.stringify(best.policy, null, 2) +
+        "\n\nResponse time: " + elapsed + " ms" +
+        "\nLLM tokens used: 0" +
+        "\n\nThis is a keyword match, not an AI-generated answer.";
+    }
+
+    loadPolicies();
+  </script>
+</body>
+</html>
