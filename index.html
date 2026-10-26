@@ -50,11 +50,95 @@
       placeholder="Type your policy question here"></textarea>
 
     <button onclick="searchPolicies()">Search Policies</button>
+<button onclick="runMethod2()">Method 2: LLM without Vector Index</button>
+<button onclick="runMethod3()">Method 3: LLM with Vector Index</button>
 
     <div id="results">Loading company policies...</div>
   </main>
 
-  <script>
+ <script>
+async function runMethod2() {
+    const question = document.getElementById("question").value.trim();
+    const results = document.getElementById("results");
+
+    if (!question) {
+        results.textContent = "Please enter a policy question.";
+        return;
+    }
+
+    results.textContent = "Method 2: AI is thinking...";
+
+    try {
+        const response = await fetch("http://127.0.0.1:5001/api/method2", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ question: question })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Server error");
+        }
+
+        results.textContent =
+            "METHOD 2: LLM WITHOUT VECTOR INDEX\n\n" +
+            "Answer: " + data.answer + "\n\n" +
+            "Response time: " + data.response_time_seconds + " seconds\n" +
+            "Input tokens: " + data.input_tokens + "\n" +
+            "Output tokens: " + data.output_tokens + "\n" +
+            "Total tokens: " + data.total_tokens;
+
+        results.style.whiteSpace = "pre-wrap";
+
+    } catch (error) {
+        results.textContent = "Error: " + error.message;
+    }
+}
+async function runMethod3() {
+    const question = document.getElementById("question").value.trim();
+    const results = document.getElementById("results");
+
+    if (!question) {
+        results.textContent = "Please enter a policy question.";
+        return;
+    }
+
+    results.textContent = "Method 3: AI is searching the vector index...";
+
+    try {
+        const response = await fetch("http://127.0.0.1:5001/api/method3", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ question: question })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Server error");
+        }
+
+        results.textContent =
+            "METHOD 3: LLM WITH VECTOR INDEX\n\n" +
+            "Answer: " + data.answer + "\n\n" +
+            "Relevant policies: " + data.relevant_policies.join(", ") + "\n\n" +
+            "Response time: " + data.response_time_seconds + " seconds\n" +
+            "Input tokens: " + data.input_tokens + "\n" +
+            "Output tokens: " + data.output_tokens + "\n" +
+            "Total tokens: " + data.total_tokens;
+
+        results.style.whiteSpace = "pre-wrap";
+
+    } catch (error) {
+        results.textContent = "Error: " + error.message;
+    }
+}
+
     let policies = [];
 
     function parseCSV(text) {
